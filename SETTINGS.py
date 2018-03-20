@@ -1,4 +1,4 @@
-# -*- encoding : utf-8 -*-
+# encoding:utf-8
 '''
 GENERAL SETTINGS FOR ALL SPIDER
 
