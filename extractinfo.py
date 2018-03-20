@@ -1,3 +1,5 @@
+# -*- encoding : utf-8 -*-
+
 from SETTINGS import MYSQL_HOST,MYSQL_USER,MYSQL_DATABASE,MYSQL_PASSWORD
 import pymysql
 
