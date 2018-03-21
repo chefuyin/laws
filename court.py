@@ -5,7 +5,7 @@ import lxml.html
 import pymysql
 import datetime
 import time
-from SETTINGS import USER_AGENT_LIST,MYSQL_HOST,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE
+from SETTINGS import USER_AGENT_LIST, MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE
 
 
 class CourtSpider:
@@ -18,9 +18,9 @@ class CourtSpider:
         ]
         self.domain = 'http://www.court.gov.cn'
         self.conn = pymysql.connect(
-            host= MYSQL_HOST,
-            user= MYSQL_USER,
-            password= MYSQL_PASSWORD,
+            host=MYSQL_HOST,
+            user=MYSQL_USER,
+            password=MYSQL_PASSWORD,
             db=MYSQL_DATABASE,
             charset='utf8mb4',
         )
@@ -30,25 +30,40 @@ class CourtSpider:
         for base_url in self.main_url:
             html = self.get_html(base_url)
             # for i in range(1,2):
-            page_num=self.page_num(html)
-            url_list =[base_url+'?page={}'.format(str(i)) for i in range(1,(page_num // 20)+2)]
+            page_num = self.page_num(html)
+            url_list = [
+                base_url + '?page={}'.format(str(i))
+                for i in range(1, (page_num // 20) + 2)
+            ]
             for page_url in url_list:
-                print(page_url)
+                # print(page_url)
                 page_info = self.get_html(page_url)  #get the page content
                 urls = self.law_urls(page_info)
                 # print(urls)
-                titles = self.law_titles(page_info)                
+                titles = self.law_titles(page_info)
                 for url, title in zip(urls, titles):
                     html2 = self.get_html(url)
                     date = self.publish_date(html2)
                     content = self.law_content(html2)
                     ret = self.exist(url)
                     if ret[0] == 1:
-                        print('《{}》已经存在了'.format(title))
+                        #print('《{}》已经存在了'.format(title))
+                        with open('court.log', 'a+') as file:
+                            file.write(
+                                str(
+                                    time.strftime("%Y-%m-%d %H:%M:%S",
+                                                  time.localtime())) +
+                                '《{}》已经存在了\n'.format(title.strip().replace('\u200b','')))
                         pass
                     else:
-                        self.write_db(title, url, date, content)
-                        print('《{}》已采集入库'.format(title))
+                        self.write_db(title.strip(), url, date, content)
+                        with open('court.log', 'a+') as file:
+                            #print('《{}》已采集入库'.format(title))
+                            file.write(
+                                str(
+                                    time.strftime("%Y-%m-%d %H:%M:%S",
+                                                  time.localtime())) +
+                                '《{}》已采集入库\n'.format(title.strip().replace('\u200b','')))
                     time.sleep(random.random())
         self.conn.commit()
 
@@ -70,8 +85,8 @@ class CourtSpider:
 
     def publish_date(self, html):
         rule = '//ul[@class="clearfix fl message"]/li'
-        date = self.get_by_xpath(html,
-                                 rule)[1].xpath('string(.)').split('：')[1].split(' ')[0]
+        date = self.get_by_xpath(
+            html, rule)[1].xpath('string(.)').split('：')[1].split(' ')[0]
         date_new = datetime.datetime.strptime(date, "%Y-%m-%d")
         return date_new
 
@@ -88,7 +103,10 @@ class CourtSpider:
 
     def law_titles(self, html):
         rule = '//div[@class="sec_list"]/ul/li/a/@title'
-        law_titles = [i.strip().replace('\r','').replace('\n','').replace('\t','') for i in self.get_by_xpath(html, rule)]
+        law_titles = [
+            i.strip().replace('\r', '').replace('\n', '').replace('\t', '')
+            for i in self.get_by_xpath(html, rule)
+        ]
         return law_titles
 
     def page_num(self, html):
@@ -102,7 +120,7 @@ class CourtSpider:
         content = selector.xpath(rule)
         return content
 
-    def get_html(self, url):        
+    def get_html(self, url):
         response = requests.get(url, headers=self.request_headers())
         return response.text
 
@@ -121,11 +139,12 @@ class CourtSpider:
         }
         return headers
 
-    def user_agent(self):        
+    def user_agent(self):
         ua = random.choice(USER_AGENT_LIST)
         return ua
 
-if __name__ =='__main__':
+
+if __name__ == '__main__':
     obj = CourtSpider()
     obj.main()
     # obj.conn.commit()

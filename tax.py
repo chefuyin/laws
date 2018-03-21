@@ -27,23 +27,35 @@ class TaxSpider:
 
     def main(self):
         response = self.get_html(self.main_url[0])
-        page_urls= self.page_urls(response)
+        page_urls = self.page_urls(response)
         for i in page_urls:
-        # url='http://www.chinatax.gov.cn/n810341/n810755/c3348045/content.html'
+            # url='http://www.chinatax.gov.cn/n810341/n810755/c3348045/content.html'
             h = self.get_html(i)
-            urls,titles = self.law_urls_titles(h)
-            for url,title in zip(urls,titles):
-                r= self.get_html(url)
-                content=self.law_content(r)
-                dept_name=self.law_department(r)
-                doc_num=self.doc_num(r)
+            urls, titles = self.law_urls_titles(h)
+            for url, title in zip(urls, titles):
+                r = self.get_html(url)
+                content = self.law_content(r)
+                dept_name = self.law_department(r)
+                doc_num = self.doc_num(r)
                 ret = self.exist(url)
                 if ret[0] == 1:
-                    print('《{}》已经存在了'.format(title))
+                    #print('《{}》已经存在了'.format(title))
+                    with open('tax.log', 'a+') as file:
+                        file.write(
+                            str(
+                                time.strftime("%Y-%m-%d %H:%M:%S",
+                                              time.localtime())) +
+                            '《{}》已经存在了\n'.format(title.strip()))
                     pass
                 else:
-                    self.write_db(title, url, dept_name, content,doc_num)
-                    print('《{}》已采集入库'.format(title))
+                    self.write_db(title.strip(), url, dept_name, content, doc_num)
+                    #print('《{}》已采集入库'.format(title))
+                    with open('tax.log', 'a+') as file:
+                        file.write(
+                            str(
+                                time.strftime("%Y-%m-%d %H:%M:%S",
+                                              time.localtime())) +
+                            '《{}》已采集入库\n'.format(title.strip()))
                 time.sleep(random.random())
         self.conn.commit()
 
@@ -69,52 +81,64 @@ class TaxSpider:
         }
         self.cursor.execute(sql, value)
 
-
-    def law_department(self,html):
-        rule='//li[@class="sv_blue24"]/text()'
-        dept_name=self.get_by_xpath(html,rule)
-        try:        
+    def law_department(self, html):
+        rule = '//li[@class="sv_blue24"]/text()'
+        dept_name = self.get_by_xpath(html, rule)
+        try:
             return dept_name[0]
         except Exception as e:
-            print(e)
+            # print(e)
+            with open('tax.log', 'a+') as file:
+                        file.write(
+                            str(
+                                time.strftime("%Y-%m-%d %H:%M:%S",
+                                              time.localtime())) +
+                            'error:{}\n'.format(str(e)))
 
-    def doc_num(self,html):
-        rule='//li[@class="sv_black14_30"]/text()'
-        doc_num=self.get_by_xpath(html,rule)
+    def doc_num(self, html):
+        rule = '//li[@class="sv_black14_30"]/text()'
+        doc_num = self.get_by_xpath(html, rule)
         try:
             return doc_num[0]
         except Exception as e:
-            print(e)
-            
+            # print(e)
+            with open('tax.log', 'a+') as file:
+                        file.write(
+                            str(
+                                time.strftime("%Y-%m-%d %H:%M:%S",
+                                              time.localtime())) +
+                            'error:{}\n'.format(str(e)))
+
     def law_content(self, html):
-        rule='//li[@id="tax_content"]/p/text()'
-        content= self.get_by_xpath(html,rule)
+        rule = '//li[@id="tax_content"]/p/text()'
+        content = self.get_by_xpath(html, rule)
         # r_content=[self.remove_tags(i) for i in content]
-        li =self.remove_blank([self.remove_tags(i) for i in content])        
-        r_content='\r\n'.join(li)
+        li = self.remove_blank([self.remove_tags(i) for i in content])
+        r_content = '\r\n'.join(li)
         return r_content
 
-    def remove_blank(self,li):
+    def remove_blank(self, li):
         while '' in li:
             li.remove('')
         return li
 
-    def remove_tags(self,text):
-        t= text.strip().replace('\n','').replace('\t','').replace('\u3000','')       
+    def remove_tags(self, text):
+        t = text.strip().replace('\n', '').replace('\t', '').replace(
+            '\u3000', '')
         return t
 
-    def law_urls_titles(self,html):
-        rule='//dl/dd/a/@href'
-        rule1='//dl/dd/a/@title'
-        law_urls= self.get_by_xpath(html,rule)
-        law_titles = self.get_by_xpath(html,rule1)
-        law_url_list= [self.domain+i.split('../..')[1] for i in law_urls]
-        return law_url_list,law_titles    
+    def law_urls_titles(self, html):
+        rule = '//dl/dd/a/@href'
+        rule1 = '//dl/dd/a/@title'
+        law_urls = self.get_by_xpath(html, rule)
+        law_titles = self.get_by_xpath(html, rule1)
+        law_url_list = [self.domain + i.split('../..')[1] for i in law_urls]
+        return law_url_list, law_titles
 
-    def page_urls(self,html):
+    def page_urls(self, html):
         rule = '//div[@style="display:none"]/a/@href'
         page_urls = self.get_by_xpath(html, rule)
-        url_list = [self.domain+i.split('../..')[1] for i in page_urls]
+        url_list = [self.domain + i.split('../..')[1] for i in page_urls]
         return url_list
 
     def get_by_xpath(self, html, rule):
@@ -125,7 +149,7 @@ class TaxSpider:
 
     def get_html(self, url):
         response = requests.get(url, headers=self.request_headers())
-        response.encoding ='utf-8'
+        response.encoding = 'utf-8'
         return response.text
 
     def request_headers(self):
